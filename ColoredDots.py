@@ -167,9 +167,13 @@ runs_total = 0
 runs_success = 0
 runs_failed = 0
 
+# Values to change program behavior ------------------------------------------------------------------------------------
+
 drawing = True
 
 count_mode = False
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 last_update = time.time() - interval
 root = Tk()
