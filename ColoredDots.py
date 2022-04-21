@@ -67,6 +67,9 @@ def step():
     global runs_total
     global runs_success
     global runs_failed
+    for dot in dots:
+        if drawing:
+            dot.draw()
     turn += 1
     last_update = time.time()
     c.delete(all)
@@ -84,21 +87,24 @@ def step():
     count = 0
     c.delete(all)
     for dot in dots:
-        dot.draw()
+        if drawing:
+            dot.draw()
         if dot.color == "red":
             count += 1
-    # if turn >= 10000 or dots[-1].color == "red" or not count:
-    #     if dots[-1].color == "red":
-    #         runs_success += 1
-    #     else:
-    #         runs_failed += 1
-    #     runs_total += 1
-    #     print(f"Chance on step {runs_total}:", runs_success / runs_total,
-    #           f"and there were {runs_success} successful runs.")
-    #     if runs_total >= 10000:
-    #         print("\nChance:", runs_success / runs_total)
-    #         queue_free()
-    #     restart()
+    if turn >= 10000 or dots[-1].color == "red" or not count and count_mode:
+        if dots[-1].color == "red":
+            runs_success += 1
+        else:
+            runs_failed += 1
+        runs_total += 1
+        if runs_total >= 99990:
+            print(f"Chance on step {runs_total}:", runs_success / runs_total,
+                  f"and there were {runs_success} successful runs.")
+        if runs_total >= 100000:
+            print("--------------------------------------------")
+            print("\nChance:", runs_success / runs_total)
+            queue_free()
+        restart()
 
 
 def restart():
@@ -108,7 +114,7 @@ def restart():
     turn = 0
     dots = list()
     dots_matrix = list()
-    nu = 19
+    nu = 10
     corner = 7
     posx = 10
     posy = h // 2
@@ -126,20 +132,22 @@ def restart():
             posx += w // 2
             posy += h // 2
         # [j + 1] if j == 0 else ([j - 1] if j == nu - 1 else [j - 1, j + 1])
-        dots_matrix.append(list())
         dots.append(Dot(c, "red" if j == 0 else "white", j, posx, posy))
-    for i in range(19):
-        dots_matrix[i].append((i + (random.randint(5, 20))) % nu)
+        dots_matrix.append([j - 1, j + 1] if j not in (0, nu - 1) else ([j - 1] if j == nu - 1 else [j + 1]))
+    # for i in range(nu):
+    #     dots_matrix[i].append((i + (random.randint(5, nu))) % nu)
     for i in range(len(dots_matrix)):
         for j in range(len(dots_matrix)):
             if i in dots_matrix[j] and j not in dots_matrix[i]:
                 dots_matrix[i].append(j)
             if j in dots_matrix[i] and i not in dots_matrix[j]:
                 dots_matrix[j].append(i)
-    for dot in dots:
-        for i in dots_matrix[dot.n]:
-            c.create_line(dot.x + dot_diameter // 2, dot.y + dot_diameter // 2,
-                          dots[i].x + dot_diameter // 2, dots[i].y + dot_diameter // 2, arrow="both")
+    if drawing:
+        for dot in dots:
+            dot.draw()
+            for i in dots_matrix[dot.n]:
+                c.create_line(dot.x + dot_diameter // 2, dot.y + dot_diameter // 2,
+                              dots[i].x + dot_diameter // 2, dots[i].y + dot_diameter // 2, arrow="both")
 
 
 def queue_free():
@@ -153,11 +161,16 @@ dots_matrix = list()
 rules = 1
 placing_mode = "radial"
 playing = True
-interval = 0.1
+interval = 1
 turn = 1
 runs_total = 0
 runs_success = 0
 runs_failed = 0
+
+drawing = True
+
+count_mode = False
+
 last_update = time.time() - interval
 root = Tk()
 root.title("ColoredDots")
@@ -197,8 +210,8 @@ rLabel.pack(in_=b1, side=LEFT)
 pEntry.pack(in_=b3, side=LEFT)
 qEntry.pack(in_=b2, side=LEFT)
 rEntry.pack(in_=b1, side=LEFT)
-pEntry.insert(0, "1")
-qEntry.insert(0, "0.9")
+pEntry.insert(0, "0.8")
+qEntry.insert(0, "0.6")
 rEntry.insert(0, "0.5")
 
 application_exists = True  # Dot(c, "red", 0)
@@ -209,7 +222,10 @@ while application_exists:
     p = float(pVar.get())
     r = float(rVar.get())
     q = float(qVar.get())
-    if playing and time.time() - last_update > interval:
+    if not count_mode:
+        if playing and time.time() - last_update > interval:
+            step()
+    else:
         step()
     root.update()
     root.update_idletasks()
