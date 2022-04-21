@@ -1,26 +1,30 @@
+import random
 from tkinter import *
 from random import random as rnd
 import time
+import math
+pi = math.pi
+
+
+def points_in_circle(ra, n=10):  # thank you Abhijit from StackOverflow
+    return [(math.cos(2 * pi / n * x) * ra, math.sin(2 * pi / n * x) * ra) for x in range(0, n + 1)]
 
 
 class Dot:
-    def __init__(self, canvas, color, n):
+    def __init__(self, canvas, color, n, x, y):
+        global dots
+        global dots_matrix
         self.canvas = canvas
         self.color = color
         self.n = n
-        self.id = c.create_oval(20 + n * 50, 180, 40 + n * 50, 200, fill=self.color, outline='black')
+        self.x = x
+        self.y = y
 
     def infect(self):
         global dots
-        if rnd() <= p and self.color != "green":
-            if self.n not in [0, len(dots) - 1]:
-                if "red" in [dots[self.n - 1].color, dots[self.n + 1].color]:
-                    self.color = "blue"
-            elif self.n != 0:
-                if "red" == dots[self.n - 1].color:
-                    self.color = "blue"
-            else:
-                if "red" == dots[self.n + 1].color:
+        if self.color != "green" and self.color != "red":
+            for dot in [dots[j].color for j in dots_matrix[self.n]]:
+                if dot == "red" and rnd() <= p:
                     self.color = "blue"
 
     def fix(self):
@@ -37,15 +41,15 @@ class Dot:
             self.color = "white"
 
     def immune(self):
-        if self.color == "red" and rnd() <= q:
+        if self.color == "red" and rnd() <= q and self.color != "green":
             self.color = "black"
 
     def immune_no_more(self):
-        if self.color == "green" and rnd() <= r:
+        if self.color == "green" and rnd() <= r and self.color != "white":
             self.color = "brown"
 
     def draw(self):
-        c.create_oval(20 + self.n * 50, 180, 40 + self.n * 50, 200, fill=self.color, outline='black')
+        c.create_oval(self.x, self.y, self.x + dot_diameter, self.y + dot_diameter, fill=self.color, outline='black')
 
 
 def play():
@@ -78,6 +82,7 @@ def step():
             dot.cure()
         dot.fix()
     count = 0
+    c.delete(all)
     for dot in dots:
         dot.draw()
         if dot.color == "red":
@@ -99,8 +104,42 @@ def step():
 def restart():
     global dots
     global turn
+    global dots_matrix
     turn = 0
-    dots = [Dot(c, "red", 0)] + [Dot(c, "white", i + 1) for i in range(9)]
+    dots = list()
+    dots_matrix = list()
+    nu = 19
+    corner = 7
+    posx = 10
+    posy = h // 2
+    c.delete("all")
+    points_array = points_in_circle(200, n=nu)
+    for j in range(nu):
+        if placing_mode == "random":
+            posx = random.randint(20, w - 20)
+            posy = random.randint(20, h - 20)
+        elif placing_mode == "geometrical":
+            posx += round(dot_diameter * 1.5)
+            posy += -dot_diameter + (j % corner) * 2 if j < corner else dot_diameter - (j % corner) * 5
+        else:
+            posx, posy = points_array[j]
+            posx += w // 2
+            posy += h // 2
+        # [j + 1] if j == 0 else ([j - 1] if j == nu - 1 else [j - 1, j + 1])
+        dots_matrix.append(list())
+        dots.append(Dot(c, "red" if j == 0 else "white", j, posx, posy))
+    for i in range(19):
+        dots_matrix[i].append((i + (random.randint(5, 20))) % nu)
+    for i in range(len(dots_matrix)):
+        for j in range(len(dots_matrix)):
+            if i in dots_matrix[j] and j not in dots_matrix[i]:
+                dots_matrix[i].append(j)
+            if j in dots_matrix[i] and i not in dots_matrix[j]:
+                dots_matrix[j].append(i)
+    for dot in dots:
+        for i in dots_matrix[dot.n]:
+            c.create_line(dot.x + dot_diameter // 2, dot.y + dot_diameter // 2,
+                          dots[i].x + dot_diameter // 2, dots[i].y + dot_diameter // 2, arrow="both")
 
 
 def queue_free():
@@ -108,9 +147,13 @@ def queue_free():
     application_exists = False
 
 
+dot_diameter = 20
+dots = list()
+dots_matrix = list()
 rules = 1
+placing_mode = "radial"
 playing = True
-interval = 1
+interval = 0.1
 turn = 1
 runs_total = 0
 runs_success = 0
@@ -126,8 +169,9 @@ b2 = Frame(root)
 b2.pack(side=BOTTOM)
 b3 = Frame(root)
 b3.pack(side=BOTTOM)
-c = Canvas(root, width=500, height=300, bg="white")
-c.create_line(30, 190, 480, 190)
+w = 800
+h = 500
+c = Canvas(root, width=w, height=h, bg="white")
 Play = Button(root, text="Pause", command=play)
 Play.pack(in_=top, side=LEFT)
 Step = Button(root, text="Step", command=step)
@@ -153,12 +197,13 @@ rLabel.pack(in_=b1, side=LEFT)
 pEntry.pack(in_=b3, side=LEFT)
 qEntry.pack(in_=b2, side=LEFT)
 rEntry.pack(in_=b1, side=LEFT)
-pEntry.insert(0, "0.9")
-qEntry.insert(0, "0.8")
-rEntry.insert(0, "0.9")
+pEntry.insert(0, "1")
+qEntry.insert(0, "0.9")
+rEntry.insert(0, "0.5")
 
-application_exists = True
-dots = [Dot(c, "red", 0)] + [Dot(c, "white", i + 1) for i in range(9)]
+application_exists = True  # Dot(c, "red", 0)
+
+restart()
 
 while application_exists:
     p = float(pVar.get())
